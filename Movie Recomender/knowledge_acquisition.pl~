@@ -1,4 +1,4 @@
-%add(assert) and remove(retract) info dynamically
+%add(assert) and remove(retract) info
 add_movie(Movie, Genre, Year) :-
     assert(movie(Movie, Genre, Year)).
 
