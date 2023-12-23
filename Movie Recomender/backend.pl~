@@ -1,23 +1,47 @@
+% this is my main pl file where the gui execution starts.
+% i am using XPCE (Ciao Prolog Graphic Environment)
+
 :- use_module(library(pce)).
 :- use_module(library(pce_style_item)).
 
-% GUI Initialization
+% Consult all required files
+:- consult('knowledge_base.pl'). %  pl facts are stored here
+:- consult('inference_engine.pl'). % recommendation rules
+:- consult('knowledge_acquisition.pl'). %to add and remove the datas dynamically
+:- consult('explanation_module.pl').
+% Entry point to start the GUI
 start_gui :-
-    new(@main, dialog('Movie Recommender')),
-    send(@main, append, new(@label, label('Enter your username:'))),
-    send(@main, append, new(@username, text_item(username, ''))),
-    send(@main, append, button('Get Recommendation', message(@prolog, get_recommendation))),
-    send(@main, append, new(@recommendation, text_item(recommendation, ''))),
+    start_gui_logic.
 
+close_gui :-
+    send(@main, destroy).
+
+% GUI Initialization
+start_gui_logic :-
+    new(@main, dialog('Movie Recommender')),
+    send(@main, size, size(500,500)),
+    send(@main, align,center),
+    send(@main, append, new(@label, label('Enter your username:'))),
+    send(@main, append, new(@username, text_item('Enter your username:'))),
+    send(@main, append, button('Get Recommendation', message(@prolog, get_recommendation))),
+    send(@main, append, button('Recommend Newer Movie', message(@prolog, recommend_newer_movie))),
+    send(@main, append, button('Create New User', message(@prolog, create_user))),
+    send(@main, append, button('Remove User', message(@prolog, remove_user))),
+    send(@main, append, new(@recommendation, text_item('Recommendation:'))),
+    send(@main, append, new(@recommendation_comment, text_item('Explanation:'))),
     send(@main, append, button('Quit', message(@main, destroy))),
+    %text fields size in pixel
+    send(@username, width, 120),
+    send(@recommendation, width, 120),
+    send(@recommendation_comment, width, 200),
     send(@main, open).
 
-
-% Consult all required files
-:- consult('knowledge_base.pl').
-:- consult('inference_engine.pl').
-:- consult('knowledge_acquisition.pl').
-:- consult('explanation_module.pl').
+% Button click event handler
+get_recommendation :-
+    get(@username, selection, Username),
+    get_movie_recommendation(Username, Recommendation, Explanation),
+    send(@recommendation, selection, Recommendation),
+    send(@recommendation_comment, selection, Explanation).
 
 % Predicate to get a movie recommendation for a user
 get_movie_recommendation(User, Recommendation, Explanation) :-
@@ -27,20 +51,43 @@ get_movie_recommendation(User, Recommendation, Explanation) :-
     % Provide an explanation for the recommendation
     explain_recommendation(User, Recommendation, Explanation).
 
-% Predicate to get a newer movie recommendation for a user
-get_newer_movie_recommendation(User, Recommendation, Explanation) :-
-    % Use the recommendation logic from the inference engine
-    recommend_newer_movie(User, Recommendation),
-
-    % Provide an explanation for the recommendation
-    explain_newer_recommendation(User, Recommendation, Explanation).
-
-%Button click event handler
-get_recommendation :-
+% Button click event handler for recommending newer movies
+recommend_newer_movie :-
     get(@username, selection, Username),
-    get_movie_recommendation(Username, Recommendation),
-    send(@recommendation, selection, Recommendation).
+    recommend_newer_movie(Username, Recommendation,Explanation),
+    send(@recommendation, selection, Recommendation),
+    send(@recommendation_comment, selection, Explanation).
 
-% Entry point to start the GUI
-start_gui :-
-    start_gui.
+% Predicate to create a new user
+create_user :-
+    new(@create_user_dialog, dialog('Create New User')),
+    send(@create_user_dialog, append, new(@create_user_label, label('Enter new username:'))),
+    send(@create_user_dialog, append, new(@new_username, text_item('Username:'))),
+    send(@create_user_dialog, append, new(@create_user_genre_label, label('Enter preferred genre:'))),
+    send(@create_user_dialog, append, new(@new_genre, text_item('Genre:'))),
+    send(@create_user_dialog, append, button('Create User', message(@prolog, add_new_user))),
+    send(@create_user_dialog, append, button('Cancel', message(@create_user_dialog, destroy))),
+    send(@create_user_dialog, open).
+
+% Predicate to add a new user
+add_new_user :-
+    get(@new_username, selection, NewUsername),
+    get(@new_genre, selection, NewGenre),
+    add_user_preference(NewUsername, NewGenre),
+    send(@create_user_dialog, destroy).
+
+% Predicate to remove a user
+remove_user :-
+    new(@remove_user_dialog, dialog('Remove User')),
+    send(@remove_user_dialog, append, new(@remove_user_label, label('Enter username to remove:'))),
+    send(@remove_user_dialog, append, new(@remove_username, text_item('Username: '))),
+    send(@remove_user_dialog, append, button('Remove User', message(@prolog, remove_existing_user))),
+    send(@remove_user_dialog, append, button('Cancel', message(@remove_user_dialog, destroy))),
+    send(@remove_user_dialog, open).
+
+% Predicate to remove an existing user
+remove_existing_user :-
+    get(@remove_username, selection, RemoveUsername),
+    remove_user_preference(RemoveUsername, _),  % The underscore (_) is a placeholder for the genre, as it's not used in the remove_user_preference/2 predicate
+    send(@remove_user_dialog, destroy).
+
